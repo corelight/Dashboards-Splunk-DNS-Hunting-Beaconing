@@ -1,19 +1,16 @@
 <form theme="dark">
   <label>DNS Beaconing</label>
   <search id="baseSearch_1">
-    <query>index=corelight sourcetype=corelight_dns  is_src_internal_ip=true
-| eval list="mozilla"
-| urlparser field=query listname="mozilla" mode=extended
-| rename query_domain AS domain 
-| search NOT[|inputlookup trusted_domains]
-| fields date*, dest, domain, qtype*, query*, record_type, src, ts, url_* </query>
+    <query>index=corelight sourcetype=corelight_dns  is_src_internal_ip=true is_trusted_domain=false
+| rename icann_domain AS domain 
+| fields date*, id.resp_h, domain, qtype*, query*, record_type, id.orig_h, ts, icann_* </query>
     <earliest>$time_.earliest$</earliest>
     <latest>$time_.latest$</latest>
     <sampleRatio>1</sampleRatio>
   </search>
   <search id="baseSearch_2">
     <query>index=corelight sourcetype=corelight_dns  is_src_internal_ip=true
-| fields date*, dest, qtype*, query*, record_type, src, ts</query>
+| fields date*, id.resp_h, qtype*, query*, record_type, id.orig_h, ts</query>
     <earliest>$time_.earliest$</earliest>
     <latest>$time_.latest$</latest>
   </search>
@@ -54,10 +51,10 @@
       <chart>
         <title>(variance  &lt;  60 sec. and avg. &gt; 1 min and count &gt; 2)</title>
         <search base="baseSearch_2">
-          <query>fields _time, src, query
+          <query>fields _time, id.orig_h, query
 | streamstats current=f last(_time) as last_time by query
 | eval gap=last_time - _time
-| stats count dc(src) AS NumHosts avg(gap) AS AverageBeaconTime var(gap) AS VarianceBeaconTime BY query
+| stats count dc(id.orig_h) AS NumHosts avg(gap) AS AverageBeaconTime var(gap) AS VarianceBeaconTime BY query
 | eval AverageBeaconTime=round(AverageBeaconTime,3), VarianceBeaconTime=round(VarianceBeaconTime,3)
 | sort –count
 | where VarianceBeaconTime &lt; 60 AND AverageBeaconTime &gt; 60 AND count &gt; 2 AND AverageBeaconTime &lt; 7200</query>
@@ -104,9 +101,9 @@
       <chart>
         <title>Look for High number of same-sized DNS requests from an internal host</title>
         <search base="baseSearch_2">
-          <query>stats count by query_length, src
+          <query>stats count by query_length, id.orig_h
 | sort -query_length, count
-| table src query_length count
+| table id.orig_h query_length count
 | head 1000</query>
         </search>
         <option name="charting.axisTitleX.text">Query Length</option>
@@ -127,7 +124,7 @@
         <title>A queries only</title>
         <search base="baseSearch_2">
           <query>search qtype_name=A
-| timechart span=1h limit=10 usenull=f useother=f count AS Requests by src</query>
+| timechart span=1h limit=10 usenull=f useother=f count AS Requests by id.orig_h</query>
         </search>
         <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
         <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
@@ -170,7 +167,7 @@
         <title>Excluding A queries</title>
         <search base="baseSearch_2">
           <query>search qtype_name!=A
-| timechart span=1h limit=10 usenull=f useother=f count AS Requests by src</query>
+| timechart span=1h limit=10 usenull=f useother=f count AS Requests by id.orig_h</query>
         </search>
         <option name="charting.axisTitleX.text">Time</option>
         <option name="charting.chart">area</option>
@@ -213,10 +210,10 @@
       <table>
         <title>Look for High Z_Score Values</title>
         <search base="baseSearch_1">
-          <query>fields query, src, _time 
+          <query>fields query, id.orig_h, _time 
 | bucket _time span=1h 
-| stats dc(query) as NumDomains by src, _time 
-| stats count avg(NumDomains) as avg stdev(NumDomains) as stdev latest(NumDomains) as latest by src 
+| stats dc(query) as NumDomains by id.orig_h, _time 
+| stats count avg(NumDomains) as avg stdev(NumDomains) as stdev latest(NumDomains) as latest by id.orig_h 
 | eval z_score = round(abs(avg - latest)/max(stdev,0.1),2) 
 | sort - z_score 
 | where z_score &gt; 0</query>
@@ -235,11 +232,11 @@
         <title>Look for High Z_Score Values</title>
         <search base="baseSearch_2">
           <query>bucket _time span=1h 
-| stats count as NumDNSLookups by src, _time 
-| stats count AS NumOfDNSLookups avg(NumDNSLookups) as avg stdev(NumDNSLookups) as stdev latest(NumDNSLookups) as latest by src
+| stats count as NumDNSLookups by id.orig_h, _time 
+| stats count AS NumOfDNSLookups avg(NumDNSLookups) as avg stdev(NumDNSLookups) as stdev latest(NumDNSLookups) as latest by id.orig_h
 | eval z_score = round(abs(avg - latest)/max(stdev,0.1),2) 
 | sort - z_score | WHERE z_score&gt;0 
-| table src latest  z_score stdev 
+| table id.orig_h latest  z_score stdev 
 | rename latest AS "Domains Queried"</query>
         </search>
         <option name="refresh.display">progressbar</option>
@@ -250,10 +247,10 @@
       <table>
         <title>Look for High Z_Score Values</title>
         <search base="baseSearch_2">
-          <query>fields _time, src 
+          <query>fields _time, id.orig_h 
 | bucket _time span=1h 
-| stats count as NumDNSLookups by src, _time 
-| stats count AS NumOfDNSLookups avg(NumDNSLookups) as avg stdev(NumDNSLookups) as stdev latest(NumDNSLookups) as latest by src 
+| stats count as NumDNSLookups by id.orig_h, _time 
+| stats count AS NumOfDNSLookups avg(NumDNSLookups) as avg stdev(NumDNSLookups) as stdev latest(NumDNSLookups) as latest by id.orig_h 
 | eval z_score = round(abs(avg - latest)/max(stdev,0.1),2) 
 | sort - z_score 
 | search z_score &gt; 0 
@@ -276,10 +273,10 @@
       <table>
         <title>Look for High Count, small variance and possibly rounded Averages (i.e every 60 seconds etc)</title>
         <search base="baseSearch_1">
-          <query>fields _time, src, query 
+          <query>fields _time, id.orig_h, query 
 | streamstats current=f last(_time) as last_time by query 
 | eval gap=last_time - _time 
-| stats count dc(src) AS NumHosts avg(gap) AS AverageBeaconTime var(gap) AS VarianceBeaconTime BY query 
+| stats count dc(id.orig_h) AS NumHosts avg(gap) AS AverageBeaconTime var(gap) AS VarianceBeaconTime BY query 
 | sort -count</query>
         </search>
         <option name="count">10</option>
@@ -300,10 +297,10 @@
         <title>Clients with multiple Query Types to the same Domain</title>
         <search base="baseSearch_1">
           <query>search qtype_name=A OR qtype_name=TXT OR qtype_name=SOA
-| eventstats dc(qtype_name) AS type_by by src domain
+| eventstats dc(qtype_name) AS type_by by id.orig_h domain
 | search type_by &gt; 1
-| stats values(qtype_name) AS "Query Type" by src domain
-| rename src AS "Source Address" domain AS Domain</query>
+| stats values(qtype_name) AS "Query Type" by id.orig_h domain
+| rename id.orig_h AS "Source Address" domain AS Domain</query>
           <earliest>$time_.earliest$</earliest>
           <latest>$time_.latest$</latest>
         </search>
@@ -313,9 +310,9 @@
     <panel>
       <title>2nd Level Domains by number of Unique Hosts  (Click on Domain Name for Domain Dossier)</title>
       <table>
-        <title>Top trusted domains removed</title>
+        <title>Trusted domains removed</title>
         <search base="baseSearch_1">
-          <query>stats dc(url_subdomain) AS HostsPerDomain BY domain
+          <query>stats dc(icann_host_subdomain) AS HostsPerDomain BY domain
 | sort -HostsPerDomain
 | rename domain AS Domain HostsPerDomain AS "Hosts per Domain"</query>
         </search>
@@ -323,7 +320,6 @@
         <option name="dataOverlayMode">none</option>
         <option name="drilldown">cell</option>
         <option name="percentagesRow">false</option>
-        <option name="refresh.display">progressbar</option>
         <option name="rowNumbers">false</option>
         <option name="totalsRow">false</option>
         <option name="wrap">true</option>
