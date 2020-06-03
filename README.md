@@ -8,4 +8,4 @@ The core of this dashboard is populated with information from parsing DNS Querie
 
 The script can be found here, https://github.com/corelight/icannTLD
 
-![Dashboard Screenshot](images/DNS Beaconing v1.0.0.jpg)
+![Dashboard Screenshot](https://github.com/corelight/Dashboards-Splunk-DNS-Hunting-Beaconing/blob/master/images/DNS%20Beaconing%20v1.0.0.jpg)
