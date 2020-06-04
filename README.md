@@ -1,4 +1,4 @@
-# DNS Hunting-Beaconing v1.0.0
+# DNS Hunting-Beaconing v1.2.0
 
 DNS Dashboard for hunting and identifying beaconing
 
