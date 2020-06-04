@@ -1,7 +1,7 @@
 <form theme="dark">
   <label>DNS Beaconing</label>
   <search id="baseSearch_1">
-    <query>index=corelight sourcetype=corelight_dns  is_src_internal_ip=true is_trusted_domain=false
+    <query>index=$indexToken$ path=dns  is_src_internal_ip=true is_trusted_domain=false
 | rename icann_domain AS domain 
 | fields date*, id.resp_h, domain, qtype*, query*, record_type, id.orig_h, ts, icann_* </query>
     <earliest>$time_.earliest$</earliest>
@@ -9,12 +9,21 @@
     <sampleRatio>1</sampleRatio>
   </search>
   <search id="baseSearch_2">
-    <query>index=corelight sourcetype=corelight_dns  is_src_internal_ip=true
+    <query>index=$indexToken$ path=dns  is_src_internal_ip=true
 | fields date*, id.resp_h, qtype*, query*, record_type, id.orig_h, ts</query>
     <earliest>$time_.earliest$</earliest>
     <latest>$time_.latest$</latest>
   </search>
+  <search id="baseSearch_3">
+    <query>index=$indexToken$ path=conn service=dns local_orig=true | fields id.orig_h id.resp_h id.resp_p proto</query>
+    <earliest>$time_.earliest$</earliest>
+    <latest>$time_.latest$</latest>
+  </search>
   <fieldset submitButton="false">
+    <input type="text" token="indexToken">
+      <label>Index</label>
+      <default>corelight</default>
+    </input>
     <input type="time" token="time_">
       <label>Time Window</label>
       <default>
@@ -293,22 +302,7 @@
       </table>
     </panel>
     <panel>
-      <table>
-        <title>Clients with multiple Query Types to the same Domain</title>
-        <search base="baseSearch_1">
-          <query>search qtype_name=A OR qtype_name=TXT OR qtype_name=SOA
-| eventstats dc(qtype_name) AS type_by by id.orig_h domain
-| search type_by &gt; 1
-| stats values(qtype_name) AS "Query Type" by id.orig_h domain
-| rename id.orig_h AS "Source Address" domain AS Domain</query>
-          <earliest>$time_.earliest$</earliest>
-          <latest>$time_.latest$</latest>
-        </search>
-        <option name="drilldown">none</option>
-      </table>
-    </panel>
-    <panel>
-      <title>2nd Level Domains by number of Unique Hosts  (Click on Domain Name for Domain Dossier)</title>
+      <title>Domains by number of Unique Hosts</title>
       <table>
         <title>Trusted domains removed</title>
         <search base="baseSearch_1">
@@ -328,6 +322,46 @@
             <link>http://centralops.net/co/DomainDossier.aspx?addr=$click.value2$&amp;&amp;dom_whois=true&amp;dom_dns=true&amp;net_whois=true</link>
           </condition>
         </drilldown>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Active DNS Ports</title>
+      <table>
+        <search base="baseSearch_3">&gt;<query>stats count(id.resp_p) AS Connections by proto, id.resp_p 
+| rename proto AS Protocol, id.resp_p AS Port
+| sort -Connections</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+    <panel>
+      <title>Clients with multiple Query Types to the same Domain</title>
+      <table>
+        <search base="baseSearch_1">
+          <query>search qtype_name=A OR qtype_name=TXT OR qtype_name=SOA
+| eventstats dc(qtype_name) AS type_by by id.orig_h domain
+| search type_by &gt; 1
+| stats values(qtype_name) AS "Query Type" by id.orig_h domain
+| rename id.orig_h AS "Source Address" domain AS Domain</query>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+    <panel>
+      <title>Clients Talking to Unauthorized (unencrypted) DNS Servers</title>
+      <table>
+        <search base="baseSearch_3">&gt;<query>search NOT[|inputlookup authorized_dns | rename ip_addr AS id.resp_h | fields id.resp_h]
+| search NOT[|inputlookup internal_dns | rename ip_addr AS id.orig_h | fields id.orig_h] 
+| table id.orig_h id.resp_h id.resp_p proto
+| dedup id.orig_h id.resp_h id.resp_p proto
+| sort id.orig_h
+| rename id.orig_h AS Client id.resp_h AS "DNS Server" id.resp_p AS Port proto AS Protocol</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
       </table>
     </panel>
   </row>
