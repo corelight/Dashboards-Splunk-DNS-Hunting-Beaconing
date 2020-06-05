@@ -365,7 +365,7 @@
     <panel>
       <title>Clients Talking to Unauthorized External (unencrypted) DNS</title>
       <table>
-        <title>Includes Multicast DNS</title>
+        <title>Includes Multicast DNS (Click on the DNS Server address for IP Info)</title>
         <search base="baseSearch_4">
           <query>search NOT[|inputlookup authorized_dns | rename ip_addr AS id.resp_h | fields id.resp_h]
 | search NOT[|inputlookup internal_dns | rename ip_addr AS id.orig_h | fields id.orig_h] 
@@ -375,9 +375,10 @@
 | sort "DNS Server"</query>
         </search>
         <option name="drilldown">cell</option>
-        <option name="refresh.display">progressbar</option>
         <drilldown>
-          <link target="_blank">https://ipinfo.io/$click.value2$</link>
+          <condition field="DNS Server">
+            <link target="_blank">https://ipinfo.io/$click.value2$</link>
+          </condition>
         </drilldown>
       </table>
     </panel>
