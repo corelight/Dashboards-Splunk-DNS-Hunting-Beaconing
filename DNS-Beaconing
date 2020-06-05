@@ -19,6 +19,16 @@
     <earliest>$time_.earliest$</earliest>
     <latest>$time_.latest$</latest>
   </search>
+  <search id="baseSearch_4">
+    <query>index=$indexToken$ path=conn service=dns local_orig=true local_resp=false | fields id.orig_h id.resp_h id.resp_p proto</query>
+    <earliest>$time_.earliest$</earliest>
+    <latest>$time_.latest$</latest>
+  </search>
+  <search id="baseSearch_5">
+    <query>index=$indexToken$ path=conn service=dns local_orig=true local_resp=true | fields id.orig_h id.resp_h id.resp_p proto</query>
+    <earliest>$time_.earliest$</earliest>
+    <latest>$time_.latest$</latest>
+  </search>
   <fieldset submitButton="false">
     <input type="text" token="indexToken">
       <label>Index</label>
@@ -302,6 +312,19 @@
       </table>
     </panel>
     <panel>
+      <title>Clients with multiple Query Types to the same Domain</title>
+      <table>
+        <search base="baseSearch_1">
+          <query>search qtype_name=A OR qtype_name=TXT OR qtype_name=SOA
+| eventstats dc(qtype_name) AS type_by by id.orig_h domain
+| search type_by &gt; 1
+| stats values(qtype_name) AS "Query Type" by id.orig_h domain
+| rename id.orig_h AS "Source Address" domain AS Domain</query>
+        </search>
+        <option name="drilldown">cell</option>
+      </table>
+    </panel>
+    <panel>
       <title>Domains by number of Unique Hosts</title>
       <table>
         <title>Trusted domains removed</title>
@@ -333,33 +356,44 @@
 | rename proto AS Protocol, id.resp_p AS Port
 | sort -Connections</query>
         </search>
-        <option name="drilldown">cell</option>
+        <option name="drilldown">row</option>
+        <drilldown>
+          <link target="_blank">https://splunk.lagermann.net/en-US/app/CorelightForSplunk/search?q=index=$indexToken$%20index=corelight%20path=conn%20service=dns%20local_orig=true%20%22id.resp_p%22=$row.Port$%20%0A%7C%20table%20id.orig_h%20id.resp_h%20id.resp_p%20proto%20%0A%7C%20rename%20id.orig_h%20AS%20Client%20proto%20AS%20Protocol,%20id.resp_p%20AS%20Port%0A%7C%20dedup%20Client&amp;earliest=$earliest$&amp;latest=$latest$</link>
+        </drilldown>
       </table>
     </panel>
     <panel>
-      <title>Clients with multiple Query Types to the same Domain</title>
+      <title>Clients Talking to Unauthorized External (unencrypted) DNS</title>
       <table>
-        <search base="baseSearch_1">
-          <query>search qtype_name=A OR qtype_name=TXT OR qtype_name=SOA
-| eventstats dc(qtype_name) AS type_by by id.orig_h domain
-| search type_by &gt; 1
-| stats values(qtype_name) AS "Query Type" by id.orig_h domain
-| rename id.orig_h AS "Source Address" domain AS Domain</query>
-        </search>
-        <option name="drilldown">cell</option>
-      </table>
-    </panel>
-    <panel>
-      <title>Clients Talking to Unauthorized (unencrypted) DNS Servers</title>
-      <table>
-        <search base="baseSearch_3">&gt;<query>search NOT[|inputlookup authorized_dns | rename ip_addr AS id.resp_h | fields id.resp_h]
+        <title>Includes Multicast DNS</title>
+        <search base="baseSearch_4">
+          <query>search NOT[|inputlookup authorized_dns | rename ip_addr AS id.resp_h | fields id.resp_h]
 | search NOT[|inputlookup internal_dns | rename ip_addr AS id.orig_h | fields id.orig_h] 
 | table id.orig_h id.resp_h id.resp_p proto
 | dedup id.orig_h id.resp_h id.resp_p proto
-| sort id.orig_h
-| rename id.orig_h AS Client id.resp_h AS "DNS Server" id.resp_p AS Port proto AS Protocol</query>
+| rename id.orig_h AS Client id.resp_h AS "DNS Server" id.resp_p AS Port proto AS Protocol
+| sort "DNS Server"</query>
         </search>
         <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <link target="_blank">https://ipinfo.io/$click.value2$</link>
+        </drilldown>
+      </table>
+    </panel>
+    <panel>
+      <title>Clients Talking to Unauthorized Internal (unencrypted) DNS</title>
+      <table>
+        <title>These are most likely miss-configured clients</title>
+        <search base="baseSearch_5">&gt;<query>search NOT[|inputlookup authorized_dns | rename ip_addr AS id.resp_h | fields id.resp_h]
+| search NOT[|inputlookup internal_dns | rename ip_addr AS id.orig_h | fields id.orig_h] 
+| table id.orig_h id.resp_h id.resp_p proto
+| dedup id.orig_h id.resp_h id.resp_p proto
+| rename id.orig_h AS Client id.resp_h AS "DNS Server" id.resp_p AS Port proto AS Protocol
+| sort "DNS Server"</query>
+        </search>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
       </table>
     </panel>
   </row>
