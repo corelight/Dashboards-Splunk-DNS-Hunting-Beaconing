@@ -333,8 +333,7 @@
 | rename proto AS Protocol, id.resp_p AS Port
 | sort -Connections</query>
         </search>
-        <option name="drilldown">none</option>
-        <option name="refresh.display">progressbar</option>
+        <option name="drilldown">cell</option>
       </table>
     </panel>
     <panel>
@@ -347,7 +346,7 @@
 | stats values(qtype_name) AS "Query Type" by id.orig_h domain
 | rename id.orig_h AS "Source Address" domain AS Domain</query>
         </search>
-        <option name="drilldown">none</option>
+        <option name="drilldown">cell</option>
       </table>
     </panel>
     <panel>
@@ -360,8 +359,7 @@
 | sort id.orig_h
 | rename id.orig_h AS Client id.resp_h AS "DNS Server" id.resp_p AS Port proto AS Protocol</query>
         </search>
-        <option name="drilldown">none</option>
-        <option name="refresh.display">progressbar</option>
+        <option name="drilldown">cell</option>
       </table>
     </panel>
   </row>
