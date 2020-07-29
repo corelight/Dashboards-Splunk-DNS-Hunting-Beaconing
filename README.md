@@ -1,10 +1,10 @@
-# DNS Hunting-Beaconing v18.1.0.2
+# DNS Hunting-Beaconing v19.2.0.0
 
 DNS Dashboard for hunting and identifying beaconing
 
 This dashboard no longer uses any third-party modules or a Splunk lookup table to identify "Trusted Domains".  All of that work has been moved to the Corelight/Zeek sensor.
 
-The dashboard does use two Splunk lookup tables to identify internal and authorized DNS servers.
+However, the dashboard does use two Splunk lookup tables to identify internal and authorized DNS servers.
 
 The file 'internal_dns_servers.csv' is a list of all internal DNS servers that are authorized to talk to external DNS servers.
 The file 'authorized_dns_servers.csv' is a list of all the DNS servers other devices are authorized to talk directly to.
@@ -15,4 +15,4 @@ The core of this dashboard is populated with information from parsing DNS Querie
 
 The script can be found here, https://github.com/corelight/icannTLD
 
-![Dashboard Screenshot](https://github.com/corelight/Dashboards-Splunk-DNS-Hunting-Beaconing/blob/master/images/DNS%20Beaconing%20v1.0.0.jpg)
+![Dashboard Screenshot](https://github.com/corelight/Dashboards-Splunk-DNS-Hunting-Beaconing/blob/master/images/dns%20beaconing%20dashboard.jpg)
